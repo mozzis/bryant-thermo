@@ -43,6 +43,10 @@ Grafana plots the first enabled zone's current temperature and humidity. Prometh
 
    If this fails with `failed to connect to the docker API at npipe:////./pipe/podman-machine-default`, check the Podman machine startup output for the API-forwarder failure described above. The slash formatting is not the cause. Open [http://localhost:3000](http://localhost:3000) and sign in with `admin` / `admin`. Grafana asks you to change the password on first sign-in.
 
+### Access from other computers
+
+Grafana is published on port 3000; Prometheus remains bound to localhost. On Windows with the WSL Podman machine, the host port forwarder may listen only on loopback. From another device on the same network, open `http://<this-computer's-LAN-IP>:3000` after enabling LAN access for the Podman machine. Use a strong Grafana password and allow inbound TCP port 3000 through Windows Firewall on the Private profile.
+
 Prometheus is available at [http://localhost:9090](http://localhost:9090). The API metrics endpoint is `http://localhost:5080/api/metrics`.
 
 Temperature samples are labeled `off`, `heating`, or `cooling`. Humidity is labeled `Low` below five percentage points under the active setpoint, `Normal` within ±5 percentage points of it, and `High` above five points over it. Low is purple, Normal is green, and High is yellow. If humidification is disabled or the target is missing, the gray `Setpoint unavailable` series is shown instead. If the API is not reachable, confirm it listens on host port 5080 before restarting the containers.

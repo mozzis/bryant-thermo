@@ -51,6 +51,8 @@ The API can run as a Windows Service and start automatically at boot. Add machin
 
 The installer publishes the API, copies the machine-level Carrier variables into the service environment, and registers automatic startup and restart-on-failure. The service runs as LocalSystem in Production, so it does not depend on a user profile or Development user secrets. Verify it at `http://localhost:5080/api/health` or with `Get-Service BryantThermo`.
 
+To stop and unregister the service, open PowerShell as Administrator from the repository root and run `.\scripts\remove-windows-service.ps1`. This leaves the published files and machine-level Carrier variables in place.
+
 If more than one system is on your account, set `Carrier:SystemSerial` to pick one
 (the serial appears in `GET /api/thermostat`).
 
