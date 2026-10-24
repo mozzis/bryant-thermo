@@ -9,8 +9,9 @@ public class PrometheusMetricsTests
     [InlineData(HvacAction.Idle, false, "off")]
     [InlineData(HvacAction.Heating, true, "heating")]
     [InlineData(HvacAction.Cooling, true, "cooling")]
-    [InlineData(HvacAction.Heating, false, "off")]
-    public void Temperature_metric_reports_only_active_hvac_state(HvacAction action, bool active, string expected)
+    [InlineData(HvacAction.Heating, false, "heating")]
+    [InlineData(HvacAction.Cooling, false, "cooling")]
+    public void Temperature_metric_reports_equipment_state(HvacAction action, bool active, string expected)
     {
         var metrics = PrometheusMetrics.Render(Snapshot(action, active, humidity: 40, target: 40));
 

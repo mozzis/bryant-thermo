@@ -134,7 +134,7 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "thermostat_temperature",
+          "expr": "thermostat_temperature{equipment=~\"off|heating|cooling\"}",
           "legendFormat": "{{equipment}}",
           "range": true,
           "refId": "A"
@@ -296,5 +296,5 @@
   "timezone": "browser",
   "title": "Bryant Thermostat",
   "uid": "bryant-thermostat",
-  "version": 1
+  "version": 2
 }

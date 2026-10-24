@@ -18,12 +18,12 @@ public static class PrometheusMetrics
         if (snapshot is null || zone is null)
             return output.ToString();
 
-        var equipment = zone.ActionActive ? zone.Action switch
+        var equipment = zone.Action switch
         {
             HvacAction.Heating => "heating",
             HvacAction.Cooling => "cooling",
             _ => "off",
-        } : "off";
+        };
 
         if (zone.Temperature is { } temperature && double.IsFinite(temperature))
         {
