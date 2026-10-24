@@ -50,7 +50,6 @@ public class CarrierStatusMapperTests
         Assert.True(snap.Online);
         Assert.Equal("F", snap.TemperatureUnit);
         Assert.Equal(48, snap.OutdoorTemperature);
-        Assert.True(snap.FanRunning);
         Assert.Equal(new DateTimeOffset(2026, 10, 24, 14, 40, 0, TimeSpan.Zero), snap.ThermostatTimeUtc);
 
         var zone = Assert.Single(snap.Zones); // disabled zone 2 is dropped
@@ -116,15 +115,6 @@ public class CarrierStatusMapperTests
     public void Parses_zone_conditioning(string? raw, HvacAction action, bool active)
     {
         Assert.Equal((action, active), CarrierStatusMapper.ParseConditioning(raw));
-    }
-
-    [Fact]
-    public void Blower_state_from_rpm_or_unknown()
-    {
-        Assert.False(CarrierStatusMapper.BlowerRunning(JsonNode.Parse("""{ "blwrpm": "0", "opstat": "off" }""")));
-        Assert.True(CarrierStatusMapper.BlowerRunning(JsonNode.Parse("""{ "cfm": 600 }""")));
-        Assert.Null(CarrierStatusMapper.BlowerRunning(JsonNode.Parse("""{ "opstat": "on" }""")));
-        Assert.Null(CarrierStatusMapper.BlowerRunning(null));
     }
 
     [Fact]

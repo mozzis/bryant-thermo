@@ -61,7 +61,7 @@ All responses are JSON. Temperatures are in the unit the thermostat is set to (`
 
 | Method | Path | Returns |
 | --- | --- | --- |
-| GET | `/api/thermostat/summary` | The fields you asked for, for the first zone: temperature, humidity, heat/cool set points, action, fan running |
+| GET | `/api/thermostat/summary` | The fields you asked for, for the first zone: temperature, humidity, heat/cool set points, equipment action |
 | GET | `/api/thermostat` | Full snapshot: system info plus every enabled zone |
 | GET | `/api/thermostat/humidity` | Humidifier settings: the profile in effect plus home / away / vacation |
 | GET | `/api/thermostat/zones` | All enabled zones |
@@ -85,7 +85,6 @@ Example `GET /api/thermostat/summary`:
   "coolSetPoint": 74,
   "action": "cooling",
   "actionActive": true,
-  "fanRunning": true,
   "humidityTarget": 40,
   "humidifierEnabled": true,
   "humidifierRunning": false,
@@ -114,8 +113,6 @@ Example `GET /api/thermostat/humidity` (also included as `humidity` in `GET /api
 - `action` is `heating`, `cooling`, `idle` or `unknown`, from Carrier's zone conditioning value.
   `actionActive` is false while the equipment is staging up (Carrier's `prep_*` / `pending_*`);
   the raw value is in the zone's `conditioning` field.
-- `fanRunning` (system level) comes from the indoor blower's RPM/airflow. Not every system reports
-  those; then it is `null` in the full snapshot, and `/summary` falls back to "heating or cooling is active".
 - `fanMode` is the configured fan *setting* (`off` = auto, `low`, `med`, `high`), not whether it is spinning.
 - **Humidity setting.** The humidifier setpoint is `heatingTargetPercent`, the relative humidity the
   system humidifies to while heating. Carrier stores it in 5 % steps (`rhtg` 8 = 40 %); the backend

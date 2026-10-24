@@ -54,7 +54,6 @@ public static class CarrierStatusMapper
             TemperatureUnit = status["cfgem"]?.ToString() is { Length: > 0 } unit ? unit.ToUpperInvariant() : "F",
             SystemMode = status["mode"]?.ToString(),
             OutdoorTemperature = CarrierJson.GetDouble(status["oat"]),
-            FanRunning = BlowerRunning(status["idu"]),
             ThermostatTimeUtc = CarrierJson.GetTimestamp(status["utcTime"]),
             FetchedAtUtc = fetchedAt,
             Humidity = MapHumidity(status, system["config"], zones.FirstOrDefault()?.Activity),
@@ -144,16 +143,6 @@ public static class CarrierStatusMapper
         if (v.EndsWith("heat", StringComparison.Ordinal)) return (HvacAction.Heating, active);
         if (v.EndsWith("cool", StringComparison.Ordinal)) return (HvacAction.Cooling, active);
         return (HvacAction.Unknown, false);
-    }
-
-    /// <summary>Blower state from the indoor unit's RPM / airflow, when the system reports them.</summary>
-    public static bool? BlowerRunning(JsonNode? idu)
-    {
-        if (idu is null) return null;
-        if (CarrierJson.GetDouble(idu["blwrpm"]) is { } rpm) return rpm > 0;
-        if (CarrierJson.GetDouble(idu["cfm"]) is { } cfm) return cfm > 0;
-        if (string.Equals(idu["opstat"]?.ToString(), "off", StringComparison.OrdinalIgnoreCase)) return false;
-        return null;
     }
 
     private static bool IsEnabled(JsonNode? enabled) =>

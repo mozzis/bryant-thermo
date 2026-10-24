@@ -66,10 +66,16 @@ api.MapGet("/thermostat/summary", (ThermostatState state) =>
     .WithName("GetSummary")
     .WithSummary("Dashboard summary")
     .WithDescription("Indoor temperature and humidity, heating and cooling set points, whether the system is " +
-                     "heating, cooling or idle, whether the blower is running, and the humidifier set point — " +
+                     "heating, cooling or idle, and the humidifier set point — " +
                      "for the first (or only) zone.")
     .Produces<ThermostatSummary>()
     .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
+
+api.MapGet("/metrics", (ThermostatState state) =>
+        Results.Text(PrometheusMetrics.Render(state.Snapshot), "text/plain; version=0.0.4; charset=utf-8"))
+    .WithName("PrometheusMetrics")
+    .WithSummary("Prometheus metrics")
+    .WithDescription("Current first-zone temperature and humidity for Prometheus scraping.");
 
 api.MapGet("/thermostat", (ThermostatState state) =>
         state.Snapshot is { } s ? Results.Ok(s) : NotReady(state))

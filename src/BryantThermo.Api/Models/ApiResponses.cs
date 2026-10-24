@@ -32,12 +32,6 @@ public sealed record ThermostatSummary
     /// <summary>True when the equipment is running for <see cref="Action"/>; false while staging up or idle.</summary>
     public bool ActionActive { get; init; }
 
-    /// <summary>
-    /// True when the indoor blower is running. Taken from blower RPM/airflow when the system reports them,
-    /// otherwise inferred from heating or cooling being active.
-    /// </summary>
-    public bool FanRunning { get; init; }
-
     /// <summary>Humidifier set point (%) in the active comfort profile; null when humidifying is off.</summary>
     public int? HumidityTarget { get; init; }
 
@@ -65,7 +59,6 @@ public sealed record ThermostatSummary
             CoolSetPoint = z?.CoolSetPoint,
             Action = z?.Action ?? HvacAction.Unknown,
             ActionActive = z?.ActionActive ?? false,
-            FanRunning = s.FanRunning ?? (z is { ActionActive: true }),
             HumidityTarget = h?.HumidifierEnabled == false ? null : h?.HeatingTargetPercent,
             HumidifierEnabled = h?.HumidifierEnabled,
             HumidifierRunning = s.Humidity.HumidifierRunning,

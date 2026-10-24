@@ -27,12 +27,6 @@ public sealed record ThermostatSnapshot
 
     public double? OutdoorTemperature { get; init; }
 
-    /// <summary>
-    /// True when the indoor blower is turning (from blower RPM / airflow). Null when the system
-    /// doesn't report blower data; fall back to <see cref="ZoneStatus.Action"/> in that case.
-    /// </summary>
-    public bool? FanRunning { get; init; }
-
     /// <summary>Timestamp the thermostat attached to this status (UTC).</summary>
     public DateTimeOffset? ThermostatTimeUtc { get; init; }
 
