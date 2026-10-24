@@ -45,4 +45,4 @@ Grafana plots the first enabled zone's current temperature and humidity. Prometh
 
 Prometheus is available at [http://localhost:9090](http://localhost:9090). The API metrics endpoint is `http://localhost:5080/api/metrics`.
 
-Temperature samples are labeled `off`, `heating`, or `cooling`. Humidity is green at or above the active humidity setpoint and purple below it; when humidification is disabled or its target is missing, that sample is shown gray as `setpoint_unavailable`. If the API is not reachable, confirm it listens on host port 5080 before restarting the containers.
+Temperature samples are labeled `off`, `heating`, or `cooling`. Humidity is labeled `Low` below five percentage points under the active setpoint, `Normal` within ±5 percentage points of it, and `High` above five points over it. Low is purple, Normal is green, and High is yellow. If humidification is disabled or the target is missing, the gray `Setpoint unavailable` series is shown instead. If the API is not reachable, confirm it listens on host port 5080 before restarting the containers.

@@ -39,8 +39,10 @@ public static class PrometheusMetrics
                 ? null
                 : snapshot.Humidity.Active?.HeatingTargetPercent;
             var state = target is null
-                ? "setpoint_unavailable"
-                : humidity >= target.Value ? "at_or_above_setpoint" : "below_setpoint";
+                ? "Setpoint unavailable"
+                : humidity < target.Value - 5 ? "Low"
+                : humidity > target.Value + 5 ? "High"
+                : "Normal";
 
             output.Append("thermostat_humidity{state=\"").Append(state).Append("\"} ")
                 .Append(humidity.ToString(CultureInfo.InvariantCulture)).Append('\n');

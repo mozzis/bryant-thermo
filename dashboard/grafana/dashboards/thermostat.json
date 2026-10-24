@@ -113,7 +113,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Humidity - At or above setpoint"
+              "options": "Normal"
             },
             "properties": [
               {
@@ -140,7 +140,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Humidity - Below setpoint"
+              "options": "Low"
             },
             "properties": [
               {
@@ -167,7 +167,34 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Humidity - Setpoint unavailable"
+              "options": "High"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "#f2cc0c",
+                  "mode": "fixed"
+                }
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.axisLabel",
+                "value": "Relative humidity"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Setpoint unavailable"
             },
             "properties": [
               {
@@ -222,24 +249,10 @@
         },
         {
           "editorMode": "code",
-          "expr": "thermostat_humidity{state=\"at_or_above_setpoint\"}",
-          "legendFormat": "Humidity - At or above setpoint",
+          "expr": "thermostat_humidity{state=~\"Low|Normal|High|Setpoint unavailable\"}",
+          "legendFormat": "{{state}}",
           "range": true,
           "refId": "B"
-        },
-        {
-          "editorMode": "code",
-          "expr": "thermostat_humidity{state=\"below_setpoint\"}",
-          "legendFormat": "Humidity - Below setpoint",
-          "range": true,
-          "refId": "C"
-        },
-        {
-          "editorMode": "code",
-          "expr": "thermostat_humidity{state=\"setpoint_unavailable\"}",
-          "legendFormat": "Humidity - Setpoint unavailable",
-          "range": true,
-          "refId": "D"
         }
       ],
       "title": "Indoor temperature and humidity",
@@ -261,5 +274,5 @@
   "timezone": "browser",
   "title": "Bryant Thermostat",
   "uid": "bryant-thermostat",
-  "version": 5
+  "version": 6
 }

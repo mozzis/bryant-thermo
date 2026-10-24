@@ -19,10 +19,12 @@ public class PrometheusMetricsTests
     }
 
     [Theory]
-    [InlineData(39, "below_setpoint")]
-    [InlineData(40, "at_or_above_setpoint")]
-    [InlineData(41, "at_or_above_setpoint")]
-    public void Humidity_metric_compares_inclusively_to_active_setpoint(int humidity, string expected)
+    [InlineData(34, "Low")]
+    [InlineData(35, "Normal")]
+    [InlineData(40, "Normal")]
+    [InlineData(45, "Normal")]
+    [InlineData(46, "High")]
+    public void Humidity_metric_uses_five_point_normal_band(int humidity, string expected)
     {
         var metrics = PrometheusMetrics.Render(Snapshot(HvacAction.Idle, false, humidity, target: 40));
 
@@ -34,7 +36,7 @@ public class PrometheusMetricsTests
     {
         var metrics = PrometheusMetrics.Render(Snapshot(HvacAction.Idle, false, humidity: 40, target: null));
 
-        Assert.Contains("thermostat_humidity{state=\"setpoint_unavailable\"} 40", metrics);
+        Assert.Contains("thermostat_humidity{state=\"Setpoint unavailable\"} 40", metrics);
     }
 
     [Fact]
