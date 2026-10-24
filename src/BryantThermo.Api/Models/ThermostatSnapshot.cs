@@ -25,6 +25,12 @@ public sealed record ThermostatSnapshot
     /// <summary>System mode as Carrier reports it (e.g. "heat", "cool", "auto", "off", "gasheat", "hpheat").</summary>
     public string? SystemMode { get; init; }
 
+    /// <summary>Carrier's raw indoor-unit operational status (<c>idu.opstat</c>).</summary>
+    public string? IndoorUnitOperationalStatus { get; init; }
+
+    /// <summary>Carrier's raw outdoor-unit operational status (<c>odu.opstat</c>).</summary>
+    public string? OutdoorUnitOperationalStatus { get; init; }
+
     public double? OutdoorTemperature { get; init; }
 
     /// <summary>Timestamp the thermostat attached to this status (UTC).</summary>

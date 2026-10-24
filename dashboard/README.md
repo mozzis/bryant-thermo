@@ -1,6 +1,6 @@
 # Thermostat history dashboard
 
-Grafana plots the first enabled zone's current temperature and humidity. Prometheus scrapes the API every 15 seconds and retains history for 30 days; since the thermostat API polls Carrier every 60 seconds by default, repeated scrapes between API polls contain the same reading.
+Grafana plots the first enabled zone's current temperature and humidity. Prometheus scrapes the API every 15 seconds and retains history for five years; since the thermostat API polls Carrier every 60 seconds by default, repeated scrapes between API polls contain the same reading.
 
 ## Run
 

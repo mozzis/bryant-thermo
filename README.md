@@ -113,6 +113,9 @@ Example `GET /api/thermostat/humidity` (also included as `humidity` in `GET /api
 - `action` is `heating`, `cooling`, `idle` or `unknown`, from Carrier's zone conditioning value.
   `actionActive` is false while the equipment is staging up (Carrier's `prep_*` / `pending_*`);
   the raw value is in the zone's `conditioning` field.
+- The full snapshot includes Carrier's raw `indoorUnitOperationalStatus` and
+  `outdoorUnitOperationalStatus` (`idu.opstat` and `odu.opstat`) so unit-level status can be
+  compared with zone `conditioning` when diagnosing discrepancies.
 - `fanMode` is the configured fan *setting* (`off` = auto, `low`, `med`, `high`), not whether it is spinning.
 - **Humidity setting.** The humidifier setpoint is `heatingTargetPercent`, the relative humidity the
   system humidifies to while heating. Carrier stores it in 5 % steps (`rhtg` 8 = 40 %); the backend

@@ -53,6 +53,8 @@ public static class CarrierStatusMapper
             Online = !CarrierJson.GetBool(status["isDisconnected"]).GetValueOrDefault(),
             TemperatureUnit = status["cfgem"]?.ToString() is { Length: > 0 } unit ? unit.ToUpperInvariant() : "F",
             SystemMode = status["mode"]?.ToString(),
+            IndoorUnitOperationalStatus = status["idu"]?["opstat"]?.ToString(),
+            OutdoorUnitOperationalStatus = status["odu"]?["opstat"]?.ToString(),
             OutdoorTemperature = CarrierJson.GetDouble(status["oat"]),
             ThermostatTimeUtc = CarrierJson.GetTimestamp(status["utcTime"]),
             FetchedAtUtc = fetchedAt,

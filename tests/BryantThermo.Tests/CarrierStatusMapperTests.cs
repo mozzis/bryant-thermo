@@ -50,6 +50,8 @@ public class CarrierStatusMapperTests
         Assert.True(snap.Online);
         Assert.Equal("F", snap.TemperatureUnit);
         Assert.Equal(48, snap.OutdoorTemperature);
+        Assert.Equal("on", snap.IndoorUnitOperationalStatus);
+        Assert.Equal("off", snap.OutdoorUnitOperationalStatus);
         Assert.Equal(new DateTimeOffset(2026, 10, 24, 14, 40, 0, TimeSpan.Zero), snap.ThermostatTimeUtc);
 
         var zone = Assert.Single(snap.Zones); // disabled zone 2 is dropped
