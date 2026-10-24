@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/BryantThermo.Api/BryantThermo.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/BryantThermo.Tests/BryantThermo.Tests.csproj" />
+  </Folder>
+</Solution>

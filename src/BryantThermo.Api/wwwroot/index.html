@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Thermostat</title>
+  <style>
+    :root { --bg:#f6f5f2; --card:#fff; --ink:#1d1d1b; --muted:#6b6a66; --heat:#c4441a; --cool:#1f6fb2; --line:#e3e1dc; }
+    @media (prefers-color-scheme: dark) { :root { --bg:#151514; --card:#1f1f1d; --ink:#ecebe7; --muted:#9a9893; --line:#33322f; } }
+    body { margin:0; font:16px/1.4 system-ui, sans-serif; background:var(--bg); color:var(--ink); }
+    main { max-width:520px; margin:0 auto; padding:24px 16px; }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:12px; }
+    .temp { font-size:64px; font-weight:600; letter-spacing:-2px; }
+    .row { display:flex; justify-content:space-between; padding:6px 0; border-top:1px solid var(--line); }
+    .row:first-of-type { border-top:0; }
+    .muted { color:var(--muted); font-size:14px; }
+    .heating { color:var(--heat); } .cooling { color:var(--cool); }
+    button { font:inherit; padding:6px 12px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; }
+  </style>
+</head>
+<body>
+<main>
+  <div id="zones"></div>
+  <p class="muted"><span id="meta">Loading…</span> <button id="refresh">Refresh</button></p>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const fmt = (v, u = '') => v == null ? '—' : `${Math.round(v * 10) / 10}${u}`;
+const humidTarget = h => {
+  const a = h.active;
+  if (h.humidifierInstalled === false) return 'No humidifier';
+  if (!a) return '—';
+  if (a.humidifierEnabled === false) return `Off (${h.activeProfile})`;
+  return `${fmt(a.heatingTargetPercent, '%')} (${h.activeProfile})`;
+};
+
+async function load() {
+  try {
+    const r = await fetch('/api/thermostat');
+    const d = await r.json();
+    if (!r.ok) { $('#meta').textContent = d.detail || r.statusText; return; }
+    const deg = '°' + d.temperatureUnit;
+    $('#zones').innerHTML = d.zones.map(z => {
+      const cls = z.action === 'heating' ? 'heating' : z.action === 'cooling' ? 'cooling' : '';
+      const action = z.action === 'idle' ? 'Idle' : `${z.action[0].toUpperCase()}${z.action.slice(1)}${z.actionActive ? '' : ' (starting)'}`;
+      return `<div class="card">
+        <div class="muted">${z.name ?? 'Zone ' + z.id}${d.online ? '' : ' · offline'}</div>
+        <div class="temp ${cls}">${fmt(z.temperature, deg)}</div>
+        <div class="row"><span>Humidity</span><span>${fmt(z.humidity, '%')}</span></div>
+        <div class="row"><span>Heat to</span><span>${fmt(z.heatSetPoint, deg)}</span></div>
+        <div class="row"><span>Cool to</span><span>${fmt(z.coolSetPoint, deg)}</span></div>
+        <div class="row"><span>Equipment</span><span class="${cls}">${action}</span></div>
+        <div class="row"><span>Blower</span><span>${d.fanRunning == null ? '—' : d.fanRunning ? 'Running' : 'Off'}</span></div>
+        <div class="row"><span>Humidify to</span><span>${humidTarget(d.humidity)}</span></div>
+        <div class="row"><span>Humidifier</span><span>${d.humidity.humidifierRunning == null ? '—' : d.humidity.humidifierRunning ? 'Running' : 'Off'}</span></div>
+      </div>`;
+    }).join('');
+    $('#meta').textContent = `Updated ${new Date(d.fetchedAtUtc).toLocaleTimeString()} · outdoor ${fmt(d.outdoorTemperature, deg)}`;
+  } catch (e) { $('#meta').textContent = 'Backend unreachable'; }
+}
+
+$('#refresh').onclick = async () => { await fetch('/api/thermostat/refresh', { method: 'POST' }); setTimeout(load, 4000); };
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>
