@@ -62,6 +62,7 @@
               }
             ]
           },
+          "decimals": 1,
           "unit": "none"
         },
         "overrides": [
@@ -134,6 +135,10 @@
               {
                 "id": "unit",
                 "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
               }
             ]
           },
@@ -161,6 +166,10 @@
               {
                 "id": "unit",
                 "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
               }
             ]
           },
@@ -188,6 +197,10 @@
               {
                 "id": "unit",
                 "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 1
               }
             ]
           },
@@ -274,5 +287,5 @@
   "timezone": "browser",
   "title": "Bryant Thermostat",
   "uid": "bryant-thermostat",
-  "version": 6
+  "version": 7
 }
