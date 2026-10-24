@@ -11,9 +11,11 @@ services:
       - --storage.tsdb.retention.time=5y
 
   grafana:
-    image: grafana/grafana:12.2.1
+    image: grafana/grafana:12.3.0
     ports:
       - "3000:3000"
+    environment:
+      GF_PLUGINS_PREINSTALL: volkovlabs-echarts-panel@7.2.5
     depends_on:
       - prometheus
     volumes:
