@@ -6,6 +6,7 @@ using BryantThermo.Api.Services;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Host.UseWindowsService();
 
 builder.Services.Configure<CarrierOptions>(builder.Configuration.GetSection(CarrierOptions.SectionName));
 builder.Services.AddSingleton(TimeProvider.System);

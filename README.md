@@ -41,6 +41,16 @@ front end can call it as often as it likes without hitting Carrier.
    It listens on http://localhost:5080. Open that URL to see a small demo page that uses the API.
 4. Run the tests: `dotnet test`
 
+### Run automatically on Windows
+
+The API can run as a Windows Service and start automatically at boot. Add machine-level environment variables named `Carrier__Username` and `Carrier__Password` in **System Properties > Advanced > Environment Variables > System variables**. These values are stored by Windows in the registry and are not encrypted, so protect access to the machine. Then open PowerShell as Administrator from the repository root and run:
+
+```powershell
+.\scripts\install-windows-service.ps1
+```
+
+The installer publishes the API, copies the machine-level Carrier variables into the service environment, and registers automatic startup and restart-on-failure. The service runs as LocalSystem in Production, so it does not depend on a user profile or Development user secrets. Verify it at `http://localhost:5080/api/health` or with `Get-Service BryantThermo`.
+
 If more than one system is on your account, set `Carrier:SystemSerial` to pick one
 (the serial appears in `GET /api/thermostat`).
 
