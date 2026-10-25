@@ -1,6 +1,6 @@
 # Thermostat history dashboard
 
-Grafana 12.3.0 with Business Charts 7.2.5 plots the first enabled zone's temperature and humidity in one ECharts panel. Both y-axes auto-scale with a 0.5 minimum tick interval. Prometheus scrapes the API every 15 seconds and retains history for five years; since the thermostat API polls Carrier every 60 seconds by default, repeated scrapes between API polls contain the same reading.
+Grafana 12.3.0 with Business Charts 7.2.5 plots the first enabled zone's temperature and humidity in two stacked ECharts panels (temperature on top, humidity below). Each y-axis auto-scales with a 0.5 minimum tick interval. Prometheus scrapes the API every 15 seconds and retains history for five years; since the thermostat API polls Carrier every 60 seconds by default, repeated scrapes between API polls contain the same reading.
 
 ## Run
 
