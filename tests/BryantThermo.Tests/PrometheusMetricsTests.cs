@@ -28,7 +28,18 @@ public class PrometheusMetricsTests
     {
         var metrics = PrometheusMetrics.Render(Snapshot(HvacAction.Idle, false, humidity, target: 40));
 
-        Assert.Contains($"thermostat_humidity{{state=\"{expected}\"}} {humidity}", metrics);
+        Assert.Contains($"thermostat_humidity{{state=\"{expected}\",humidifier=\"off\"}} {humidity}", metrics);
+    }
+
+    [Theory]
+    [InlineData(true, "running")]
+    [InlineData(false, "off")]
+    [InlineData(null, "unknown")]
+    public void Humidity_metric_reports_humidifier_running_state(bool? running, string expected)
+    {
+        var metrics = PrometheusMetrics.Render(Snapshot(HvacAction.Idle, false, humidity: 40, target: 40, running));
+
+        Assert.Contains($"thermostat_humidity{{state=\"Normal\",humidifier=\"{expected}\"}} 40", metrics);
     }
 
     [Fact]
@@ -36,7 +47,7 @@ public class PrometheusMetricsTests
     {
         var metrics = PrometheusMetrics.Render(Snapshot(HvacAction.Idle, false, humidity: 40, target: null));
 
-        Assert.Contains("thermostat_humidity{state=\"Setpoint unavailable\"} 40", metrics);
+        Assert.Contains("thermostat_humidity{state=\"Setpoint unavailable\",humidifier=\"off\"} 40", metrics);
     }
 
     [Fact]
@@ -47,13 +58,14 @@ public class PrometheusMetricsTests
         Assert.DoesNotContain('\r', metrics);
     }
 
-    private static ThermostatSnapshot Snapshot(HvacAction action, bool active, int? humidity, int? target) => new()
+    private static ThermostatSnapshot Snapshot(HvacAction action, bool active, int? humidity, int? target, bool? humidifierRunning = false) => new()
     {
         SystemSerial = "test",
         TemperatureUnit = "F",
         Humidity = new HumiditySettings
         {
             ActiveProfile = "home",
+            HumidifierRunning = humidifierRunning,
             Active = new HumidityProfile
             {
                 HumidifierEnabled = true,

@@ -44,7 +44,15 @@ public static class PrometheusMetrics
                 : humidity > target.Value + 5 ? "High"
                 : "Normal";
 
-            output.Append("thermostat_humidity{state=\"").Append(state).Append("\"} ")
+            var humidifier = snapshot.Humidity.HumidifierRunning switch
+            {
+                true => "running",
+                false => "off",
+                _ => "unknown",
+            };
+
+            output.Append("thermostat_humidity{state=\"").Append(state)
+                .Append("\",humidifier=\"").Append(humidifier).Append("\"} ")
                 .Append(humidity.ToString(CultureInfo.InvariantCulture)).Append('\n');
         }
 
