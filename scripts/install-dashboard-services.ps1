@@ -163,6 +163,7 @@ $providerFile = Join-Path $provisioning 'dashboards\provider.yml'
 (Get-Content $providerFile -Raw).Replace('/var/lib/grafana/dashboards', ($dashboards -replace '\\', '/')) | Set-Content $providerFile -Encoding UTF8
 
 $grafanaEnvironment = @{
+    GF_DATABASE_WAL       = 'true' # avoids SQLite "database is locked" wedges under concurrent requests
     GF_PATHS_DATA         = $grafanaData
     GF_PATHS_LOGS         = $grafanaLogs
     GF_PATHS_PLUGINS      = $grafanaPlugins
