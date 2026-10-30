@@ -2,7 +2,30 @@
 
 Grafana 12.3.0 with Business Charts 7.2.5 plots the first enabled zone's temperature and humidity in two stacked ECharts panels (temperature on top, humidity below). Each y-axis auto-scales with a 0.5 minimum tick interval. Prometheus scrapes the API every 15 seconds and retains history for five years; since the thermostat API polls Carrier every 60 seconds by default, repeated scrapes between API polls contain the same reading.
 
-## Run
+## Run as Windows services (recommended)
+
+Prometheus and Grafana run as automatic Windows services next to the API (`BryantThermo`), so collection and the dashboard come back after a reboot without anyone signing in. There is no VM, container runtime or port proxy involved.
+
+From an elevated PowerShell prompt in the repository root:
+
+```powershell
+.\scripts\install-dashboard-services.ps1
+```
+
+The script downloads Prometheus, Grafana and the WinSW service wrapper (each verified against a pinned SHA-256), installs the Business Charts plugin, and registers `BryantThermoPrometheus` and `BryantThermoGrafana` with restart-on-failure. Binaries and configs go to `C:\Program Files\BryantThermo\Dashboard`; history, the Grafana database and logs go to `C:\ProgramData\BryantThermo\Dashboard`. The services run as `LocalService`. Prometheus listens on `127.0.0.1:9090` and scrapes `localhost:5080`; Grafana listens on port 3000 and the script adds an inbound Private-profile firewall rule for it. Re-running the script reinstalls the services and applies updated files from `dashboard/` while keeping existing data.
+
+To bring over history and Grafana users from a previous Podman setup, run this (not elevated) first, then pass its output folder to the installer:
+
+```powershell
+.\scripts\export-podman-dashboard-data.ps1
+.\scripts\install-dashboard-services.ps1 -ImportPath $env:TEMP\bryant-thermo-dashboard-export
+```
+
+The installer also removes any Grafana port proxy on port 3000 and the `BryantThermoDashboard` Podman logon task, which would otherwise compete for the same ports. Remove the services with `.\scripts\remove-dashboard-services.ps1`. Service logs are in `C:\ProgramData\BryantThermo\Dashboard\logs` and `...\grafana\logs`.
+
+## Run with Podman (alternative)
+
+Use this instead of the services above, not alongside them; both want ports 3000 and 9090. It only runs while your Podman machine is up, which requires a signed-in user, and it does not restart by itself after a reboot.
 
 1. Start the API on the host with its usual credentials:
 
@@ -44,6 +67,8 @@ Grafana 12.3.0 with Business Charts 7.2.5 plots the first enabled zone's tempera
    If this fails with `failed to connect to the docker API at npipe:////./pipe/podman-machine-default`, check the Podman machine startup output for the API-forwarder failure described above. The slash formatting is not the cause. Open [http://localhost:3000](http://localhost:3000) and sign in with `admin` / `admin`. Grafana asks you to change the password on first sign-in.
 
 ### Access from other computers
+
+With the Windows services, Grafana already listens on all interfaces; open `http://<this-computer's-LAN-IP>:3000` from the Private network. The rest of this section applies to the Podman setup.
 
 Grafana is published on port 3000; Prometheus remains bound to localhost. On Windows with the WSL Podman machine, the host port forwarder may listen only on loopback. From another device on the same network, open `http://<this-computer's-LAN-IP>:3000` after enabling LAN access for the Podman machine. Use a strong Grafana password and allow inbound TCP port 3000 through Windows Firewall on the Private profile.
 

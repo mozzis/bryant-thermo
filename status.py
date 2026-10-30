@@ -1,0 +1,323 @@
+"""Current operational status models for Carrier systems and zones."""
+
+from datetime import datetime
+from typing import Any
+
+from dateutil.parser import isoparse
+
+from .const import ActivityTypes, FanModes, SystemModes, TemperatureUnits
+from .util import safely_get_json_value
+
+
+class StatusUnit:
+    """Runtime status details for a Carrier indoor or outdoor unit.
+
+    Outdoor units also report refrigerant and electrical readings. Those arrive
+    in ``diagnostic-device-info`` websocket messages rather than the GraphQL
+    status response, so they are absent until such a message is applied.
+    """
+
+    def __init__(self, status_unit_json: dict[str, Any]) -> None:
+        """Build unit status details from a Carrier unit status payload.
+
+        Args:
+            status_unit_json: Raw ``idu`` or ``odu`` object from the Carrier
+                status response.
+        """
+        self.type: str | None = safely_get_json_value(status_unit_json, "type")
+        self.operational_status: str | None = safely_get_json_value(status_unit_json, "opstat")
+        self.airflow_cfm: int | None = safely_get_json_value(status_unit_json, "cfm", int)
+        self.static_pressure: float | None = safely_get_json_value(
+            status_unit_json, "statpress", float
+        )
+        self.blower_rpm: int | None = safely_get_json_value(status_unit_json, "blwrpm", int)
+        self.outdoor_coil_temperature: float | None = safely_get_json_value(
+            status_unit_json, "oducoiltmp", float
+        )
+        self.discharge_temperature: float | None = safely_get_json_value(
+            status_unit_json, "dischargetmp", float
+        )
+        self.suction_pressure: float | None = safely_get_json_value(
+            status_unit_json, "suctpress", float
+        )
+        self.suction_temperature: float | None = safely_get_json_value(
+            status_unit_json, "sucttemp", float
+        )
+        self.suction_superheat: float | None = safely_get_json_value(
+            status_unit_json, "suctsupheat", float
+        )
+        self.line_voltage: int | None = safely_get_json_value(status_unit_json, "linevolt", int)
+
+    def as_dict(self) -> dict[str, Any]:
+        """Return a dictionary representation of unit runtime details.
+
+        Returns:
+            A dictionary containing available unit status values.
+        """
+        values = {
+            "type": self.type,
+            "operational_status": self.operational_status,
+            "airflow_cfm": self.airflow_cfm,
+            "static_pressure": self.static_pressure,
+            "blower_rpm": self.blower_rpm,
+            "outdoor_coil_temperature": self.outdoor_coil_temperature,
+            "discharge_temperature": self.discharge_temperature,
+            "suction_pressure": self.suction_pressure,
+            "suction_temperature": self.suction_temperature,
+            "suction_superheat": self.suction_superheat,
+            "line_voltage": self.line_voltage,
+        }
+        return {key: value for key, value in values.items() if value is not None}
+
+    def __repr__(self) -> str:
+        """Return a developer-readable representation of the unit status.
+
+        Returns:
+            The unit status dictionary representation converted to a string.
+        """
+        return str(self.as_dict())
+
+    def __str__(self) -> str:
+        """Return a readable string representation of the unit status.
+
+        Returns:
+            The unit status representation converted to a string.
+        """
+        return str(self.as_dict())
+
+
+class StatusZone:
+    """Runtime status reported by Carrier for a single zone."""
+
+    def __init__(self, status_zone_json: dict[str, Any]) -> None:
+        """Build zone status from a Carrier status zone payload.
+
+        Args:
+            status_zone_json: Raw zone object from the Carrier status response.
+        """
+        self.api_id = safely_get_json_value(status_zone_json, "id", str)
+        self.name: str = safely_get_json_value(status_zone_json, "name")
+        # This is only Carrier's reported activity type. Use
+        # ConfigZone.current_status_activity(status_zone) to resolve the full
+        # activity profile with fan mode and heat/cool set points.
+        self.current_status_activity_type: ActivityTypes = ActivityTypes(
+            status_zone_json["currentActivity"]
+        )
+        self.temperature: float = safely_get_json_value(status_zone_json, "rt", float)
+        self.humidity: int = safely_get_json_value(status_zone_json, "rh", int)
+        self.occupancy: bool = safely_get_json_value(status_zone_json, "occupancy") == "occupied"
+        self.fan: FanModes = FanModes(status_zone_json["fan"])
+        self.hold: bool = safely_get_json_value(status_zone_json, "hold") == "on"
+        self.hold_until: str = safely_get_json_value(status_zone_json, "otmr")
+        self.heat_set_point: float = safely_get_json_value(status_zone_json, "htsp", float)
+        self.cool_set_point: float = safely_get_json_value(status_zone_json, "clsp", float)
+        self.conditioning: str = safely_get_json_value(status_zone_json, "zoneconditioning")
+        self.damper_position: int = safely_get_json_value(status_zone_json, "damperposition", int)
+
+    @property
+    def current_activity(self) -> ActivityTypes:
+        """Return Carrier's live current activity report.
+
+        Deprecated:
+            Use ``current_status_activity_type`` instead. This alias returns the
+            same Carrier status-derived value; it does not return the
+            schedule-derived activity or the combined ``current_activity``
+            serialization from ``ConfigZone.as_dict()``.
+
+        This property remains as a compatibility alias for integrations that
+        still read ``StatusZone.current_activity``.
+
+        Returns:
+            Carrier's reported current activity for this status zone.
+        """
+        return self.current_status_activity_type
+
+    @current_activity.setter
+    def current_activity(self, value: ActivityTypes) -> None:
+        """Set Carrier's live current activity through the compatibility alias.
+
+        Deprecated:
+            Assign ``current_status_activity_type`` instead. This setter updates
+            the same status-derived value as ``current_status_activity_type``.
+
+        Args:
+            value: Activity type to store as the status-derived current activity.
+        """
+        self.current_status_activity_type = value
+
+    @property
+    def zone_conditioning_const(self) -> SystemModes:
+        """Map Carrier zone conditioning text to a system mode constant.
+
+        Returns:
+            The heating, cooling, or off system mode implied by the zone state.
+
+        Raises:
+            ValueError: If Carrier reports an unknown conditioning value.
+        """
+        match self.conditioning:
+            case "active_heat" | "prep_heat" | "pending_heat":
+                return SystemModes.HEAT
+            case "active_cool" | "prep_cool" | "pending_cool":
+                return SystemModes.COOL
+            case "idle":
+                return SystemModes.OFF
+        raise ValueError(f"Unknown conditioning: {self.conditioning}")
+
+    def as_dict(self) -> dict[str, Any]:
+        """Return a dictionary representation of zone runtime status.
+
+        Returns:
+            A dictionary containing sensor values, set points, and hold state.
+        """
+        return {
+            "id": self.api_id,
+            "name": self.name,
+            "current_status_activity_type": self.current_status_activity_type.value,
+            "temperature": self.temperature,
+            "humidity": self.humidity,
+            "fan": self.fan.value,
+            "hold": self.hold,
+            "occupancy": self.occupancy,
+            "hold_until": self.hold_until,
+            "heat_set_point": self.heat_set_point,
+            "cool_set_point": self.cool_set_point,
+            "conditioning": self.conditioning,
+        }
+
+    def __repr__(self) -> str:
+        """Return a developer-readable representation of the zone status.
+
+        Returns:
+            The zone status dictionary representation converted to a string.
+        """
+        return str(self.as_dict())
+
+    def __str__(self) -> str:
+        """Return a readable string representation of the zone status.
+
+        Returns:
+            The zone status representation converted to a string.
+        """
+        return str(self.as_dict())
+
+
+class Status:
+    """Runtime operating status for a Carrier system."""
+
+    outdoor_temperature: int | None = None
+    mode: str | None = None
+    temperature_unit: TemperatureUnits
+    filter_used: int | None = None
+    is_disconnected: bool | None = None
+    airflow_cfm: int | None = None
+    blower_rpm: int | None = None
+    static_pressure: float | None = None
+    humidity_level: int | None = None
+    humidifier_on: bool | None = None
+    uv_lamp_level: int | None = None
+    outdoor_unit_operational_status: str | None = None
+    indoor_unit_operational_status: str | None = None
+    outdoor_unit: StatusUnit | None = None
+    indoor_unit: StatusUnit | None = None
+    time_stamp: datetime | None = None
+    zones: list[StatusZone]
+
+    def __init__(
+        self,
+        raw: dict[str, Any],
+    ) -> None:
+        """Build system status from a Carrier GraphQL status payload.
+
+        Args:
+            raw: Raw ``status`` object returned by the Carrier GraphQL API.
+        """
+        self.raw = raw
+        self.outdoor_temperature: float = safely_get_json_value(self.raw, "oat", float)
+        self.mode: str = safely_get_json_value(self.raw, "mode")
+        self.temperature_unit: TemperatureUnits = TemperatureUnits(self.raw["cfgem"])
+        self.filter_used: int = safely_get_json_value(self.raw, "filtrlvl", int)
+        self.humidity_level: int = safely_get_json_value(self.raw, "humlvl", int)
+        if self.raw.get("humid") is not None:
+            self.humidifier_on: bool = safely_get_json_value(self.raw, "humid", str) == "on"
+        self.uv_lamp_level: int = safely_get_json_value(self.raw, "uvlvl", int)
+        self.is_disconnected: bool = safely_get_json_value(self.raw, "isDisconnected", bool)
+        if self.raw.get("odu") is not None:
+            self.outdoor_unit = StatusUnit(self.raw["odu"])
+        if self.raw.get("idu") is not None:
+            self.indoor_unit = StatusUnit(self.raw["idu"])
+        self.airflow_cfm: int | None = safely_get_json_value(self.raw, "idu.cfm", int)
+        if self.airflow_cfm is None:
+            self.airflow_cfm = safely_get_json_value(self.raw, "odu.iducfm", int)
+        if self.indoor_unit is not None and self.indoor_unit.airflow_cfm is None:
+            self.indoor_unit.airflow_cfm = self.airflow_cfm
+        self.blower_rpm: int = safely_get_json_value(self.raw, "idu.blwrpm", int)
+        self.static_pressure: int = safely_get_json_value(self.raw, "idu.statpress", float)
+        self.outdoor_unit_operational_status: str = safely_get_json_value(self.raw, "odu.opstat")
+        self.indoor_unit_operational_status: str = safely_get_json_value(self.raw, "idu.opstat")
+        self.time_stamp = isoparse(safely_get_json_value(self.raw, "utcTime"))
+        self.zones = []
+        for zone_json in self.raw["zones"]:
+            if safely_get_json_value(zone_json, "enabled") == "on":
+                self.zones.append(StatusZone(zone_json))
+
+    @property
+    def mode_const(self) -> SystemModes:
+        """Map Carrier operating mode text to a system mode constant.
+
+        Returns:
+            The heating or cooling mode implied by the Carrier status value.
+
+        Raises:
+            ValueError: If Carrier reports an unknown operating mode.
+        """
+        match self.mode:
+            case "gasheat" | "electric" | "hpheat":
+                return SystemModes.HEAT
+            case "dehumidify":
+                return SystemModes.COOL
+        raise ValueError(f"Unknown mode: {self.mode}")
+
+    def as_dict(self) -> dict[str, Any]:
+        """Return a dictionary representation of system runtime status.
+
+        Returns:
+            A dictionary containing system-level status and enabled zone states.
+        """
+        return {
+            "time_stamp": self.time_stamp,
+            "outdoor_temperature": self.outdoor_temperature,
+            "mode": self.mode,
+            "temperature_unit": self.temperature_unit.value
+            if self.temperature_unit is not None
+            else None,
+            "filter_used": self.filter_used,
+            "is_disconnected": self.is_disconnected,
+            "airflow_cfm": self.airflow_cfm,
+            "blower_rpm": self.blower_rpm,
+            "static_pressure": self.static_pressure,
+            "humidity_level": self.humidity_level,
+            "humidifier_on": self.humidifier_on,
+            "uv_lamp_level": self.uv_lamp_level,
+            "outdoor_unit_operational_status": self.outdoor_unit_operational_status,
+            "indoor_unit_operational_status": self.indoor_unit_operational_status,
+            "outdoor_unit": self.outdoor_unit.as_dict() if self.outdoor_unit is not None else None,
+            "indoor_unit": self.indoor_unit.as_dict() if self.indoor_unit is not None else None,
+            "zones": [zone.as_dict() for zone in self.zones or []],
+        }
+
+    def __repr__(self) -> str:
+        """Return a developer-readable representation of the status model.
+
+        Returns:
+            The status dictionary representation converted to a string.
+        """
+        return str(self.as_dict())
+
+    def __str__(self) -> str:
+        """Return a readable string representation of the status model.
+
+        Returns:
+            The status representation converted to a string.
+        """
+        return str(self.as_dict())
