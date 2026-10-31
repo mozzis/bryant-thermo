@@ -28,6 +28,7 @@ public sealed class CarrierOptions
     public string LoginUrl { get; set; } = "https://dataservice.infinity.iot.carrier.com/graphql-no-auth";
     public string TokenUrl { get; set; } = "https://sso.carrier.com/oauth2/default/v1/token";
     public string OAuthClientId { get; set; } = "0oa1ce7hwjuZbfOMB4x7";
+    public string RealtimeUrl { get; set; } = "wss://realtime.infinity.iot.carrier.com/";
 
     /// <summary>
     /// Time zone of the thermostat (IANA or Windows id), used to find the next schedule period when holding.

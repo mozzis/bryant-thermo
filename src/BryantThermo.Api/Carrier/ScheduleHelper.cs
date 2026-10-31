@@ -33,5 +33,9 @@ public static class ScheduleHelper
     }
 
     private static int? ParseTime(string? value) =>
-        TimeSpan.TryParseExact(value, @"h\:mm", CultureInfo.InvariantCulture, out var t) ? (int)t.TotalMinutes : null;
+        TimeSpan.TryParseExact(value, [@"h\:mm", @"h\:m"], CultureInfo.InvariantCulture, out var t) ? (int)t.TotalMinutes : null;
+
+    /// <summary>Carrier echoes hold-until times unpadded ("6:0"); returns "HH:mm", or the input if unparseable.</summary>
+    public static string? NormalizeTime(string? value) =>
+        ParseTime(value) is { } m ? $"{m / 60:00}:{m % 60:00}" : value;
 }

@@ -42,7 +42,8 @@ public static class CarrierStatusMapper
         // Zone names live in config; live readings live in status.
         var configZones = (system["config"]?["zones"] as JsonArray ?? []).Where(z => z is not null).ToList();
         var zoneNames = configZones.ToDictionary(z => z!["id"]?.ToString() ?? "", z => z!["name"]?.ToString());
-        var holdUntil = configZones.ToDictionary(z => z!["id"]?.ToString() ?? "", z => z!["otmr"]?.ToString());
+        var holdUntil = configZones.ToDictionary(z => z!["id"]?.ToString() ?? "",
+            z => ScheduleHelper.NormalizeTime(z!["otmr"]?.ToString()));
 
         var zones = (status["zones"] as JsonArray ?? [])
             .Where(z => z is not null && IsEnabled(z["enabled"]))

@@ -36,6 +36,14 @@ public class ScheduleHelperTests
         Assert.Equal(expected, ScheduleHelper.NextPeriodStart(Zone(), DateTime.Parse(now)));
 
     [Fact]
+    public void NormalizeTime_PadsCarrierValues()
+    {
+        Assert.Equal("06:00", ScheduleHelper.NormalizeTime("6:0"));
+        Assert.Equal("17:05", ScheduleHelper.NormalizeTime("17:05"));
+        Assert.Null(ScheduleHelper.NormalizeTime(null));
+    }
+
+    [Fact]
     public void NextPeriodStart_NullWithoutProgram() =>
         Assert.Null(ScheduleHelper.NextPeriodStart(new JsonObject(), DateTime.Now));
 }

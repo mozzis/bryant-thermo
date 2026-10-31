@@ -57,6 +57,7 @@ public sealed class ThermostatControl(
         {
             var (serial, zone, _) = await LoadAsync(zoneId, ct);
             await client.ResumeScheduleAsync(serial, zone.Id, ct);
+            await client.ReconcileAsync(ct);
             poller.RequestRefresh();
             return new ControlResult
             {
@@ -84,6 +85,7 @@ public sealed class ThermostatControl(
 
             await client.SetManualSetpointsAsync(serial, zone.Id, heat, cool, zone.FanMode, ct);
             await client.HoldManualAsync(serial, zone.Id, until, ct);
+            await client.ReconcileAsync(ct);
             poller.RequestRefresh();
 
             return new ControlResult

@@ -127,6 +127,41 @@ public sealed class CarrierCloudClient(HttpClient http, IOptions<CarrierOptions>
             },
         }, ct);
 
+    /// <summary>
+    /// Asks Carrier's realtime channel to push pending config changes to the thermostat (what the mobile app does).
+    /// Best effort: failures are logged, never thrown, because the cloud-side change has already been accepted.
+    /// </summary>
+    public async Task ReconcileAsync(CancellationToken ct)
+    {
+        try
+        {
+            await EnsureTokenAsync(ct);
+            using var ws = new System.Net.WebSockets.ClientWebSocket();
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(10));
+            await ws.ConnectAsync(new Uri($"{_opt.RealtimeUrl}?Token={Uri.EscapeDataString(_accessToken!)}"), cts.Token);
+            await ws.SendAsync(Encoding.UTF8.GetBytes("""{"action":"reconcile"}"""),
+                System.Net.WebSockets.WebSocketMessageType.Text, true, cts.Token);
+            // Give the server a moment to answer/act before the connection is dropped, and log what it says.
+            var buffer = new byte[8192];
+            try
+            {
+                using var wait = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
+                wait.CancelAfter(TimeSpan.FromSeconds(3));
+                var r = await ws.ReceiveAsync(buffer, wait.Token);
+                log.LogInformation("Carrier realtime reply to reconcile: {Reply}", Encoding.UTF8.GetString(buffer, 0, r.Count));
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                log.LogInformation("Sent reconcile over the Carrier realtime channel; no reply within 3 s.");
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            log.LogWarning(ex, "Carrier reconcile failed; the thermostat may take longer to pick up the change.");
+        }
+    }
+
     private async Task<JsonNode> AuthedQueryAsync(string operation, string query, JsonObject variables, CancellationToken ct)
     {
         await EnsureTokenAsync(ct);
