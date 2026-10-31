@@ -23,6 +23,7 @@ builder.Services.AddHttpClient<CarrierCloudClient>(c =>
 // CarrierCloudClient holds the auth token, so the poller must keep one instance for its lifetime.
 builder.Services.AddSingleton<ThermostatPoller>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<ThermostatPoller>());
+builder.Services.AddSingleton<ThermostatControl>();
 
 // OpenAPI document at /openapi/v1.json (XML doc comments on the models become schema descriptions).
 builder.Services.AddOpenApi(o => o.AddDocumentTransformer((document, _, _) =>
@@ -30,8 +31,9 @@ builder.Services.AddOpenApi(o => o.AddDocumentTransformer((document, _, _) =>
     document.Info.Title = "Bryant Thermostat API";
     document.Info.Version = "v1";
     document.Info.Description =
-        "Read-only access to a Bryant Evolution Connex thermostat, via Carrier's cloud. Data is polled in the " +
-        "background (default every 60 s); every response reflects the most recent poll. Temperatures are in " +
+        "Access to a Bryant Evolution Connex thermostat, via Carrier's cloud. Data is polled in the " +
+        "background (default every 60 s); every GET reflects the most recent poll. POST endpoints under " +
+        "/thermostat/zones/{id} temporarily change set points. Temperatures are in " +
         "the unit the thermostat is set to (`temperatureUnit`).";
     return Task.CompletedTask;
 }));
@@ -131,6 +133,46 @@ api.MapPost("/thermostat/refresh", (ThermostatPoller poller) =>
     .Produces(StatusCodes.Status202Accepted)
     .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
+api.MapPost("/thermostat/zones/{id}/adjust", (string id, AdjustRequest body, ThermostatControl control, CancellationToken ct) =>
+        Control(() => control.AdjustAsync(id, body.Delta, ct)))
+    .WithName("AdjustZone")
+    .WithSummary("Temporarily raise or lower the set points")
+    .WithDescription("Shifts both the heat and cool set points by `delta` degrees (negative to lower; non-zero, " +
+                     "at most 10) relative to the thermostat's current values, and holds them until the start of " +
+                     "the next enabled schedule period, when the program resumes. Repeated calls stack.")
+    .Produces<ControlResult>()
+    .ProducesProblem(StatusCodes.Status400BadRequest)
+    .ProducesProblem(StatusCodes.Status404NotFound)
+    .ProducesProblem(StatusCodes.Status502BadGateway);
+
+api.MapPost("/thermostat/zones/{id}/setpoints", (string id, SetpointsRequest body, ThermostatControl control, CancellationToken ct) =>
+        Control(() => control.SetAsync(id, body.Heat, body.Cool, body.Indefinite, ct)))
+    .WithName("SetZoneSetpoints")
+    .WithSummary("Hold explicit set points")
+    .WithDescription("Sets the heat and cool set points and holds them until the next schedule period " +
+                     "(or indefinitely when `indefinite` is true).")
+    .Produces<ControlResult>()
+    .ProducesProblem(StatusCodes.Status400BadRequest)
+    .ProducesProblem(StatusCodes.Status404NotFound)
+    .ProducesProblem(StatusCodes.Status502BadGateway);
+
+api.MapPost("/thermostat/zones/{id}/resume", (string id, ThermostatControl control, CancellationToken ct) =>
+        Control(() => control.ResumeAsync(id, ct)))
+    .WithName("ResumeZoneSchedule")
+    .WithSummary("Cancel the hold")
+    .WithDescription("Clears any hold so the zone follows its schedule again right away.")
+    .Produces<ControlResult>()
+    .ProducesProblem(StatusCodes.Status404NotFound)
+    .ProducesProblem(StatusCodes.Status502BadGateway);
+
+static async Task<IResult> Control(Func<Task<ControlResult>> action)
+{
+    try { return Results.Ok(await action()); }
+    catch (ControlException ex) { return Results.Problem(ex.Message, statusCode: ex.Status); }
+    catch (CarrierApiException ex) { return Results.Problem(ex.Message, statusCode: StatusCodes.Status502BadGateway); }
+    catch (HttpRequestException ex) { return Results.Problem(ex.Message, statusCode: StatusCodes.Status502BadGateway); }
+}
+
 app.MapGet("/api/health", (ThermostatState state, IOptions<CarrierOptions> opt, TimeProvider time) =>
     {
         var age = state.Snapshot is { } s ? time.GetUtcNow() - s.FetchedAtUtc : (TimeSpan?)null;
@@ -159,3 +201,13 @@ static IResult NotReady(ThermostatState state) =>
         statusCode: StatusCodes.Status503ServiceUnavailable);
 
 public partial class Program;
+
+/// <summary>Body for the adjust endpoint.</summary>
+/// <param name="Delta">Degrees to add to both set points (negative to lower), in the thermostat's unit.</param>
+public sealed record AdjustRequest(double Delta);
+
+/// <summary>Body for the setpoints endpoint.</summary>
+/// <param name="Heat">Heat set point.</param>
+/// <param name="Cool">Cool set point.</param>
+/// <param name="Indefinite">Hold until cancelled instead of until the next schedule period.</param>
+public sealed record SetpointsRequest(double Heat, double Cool, bool Indefinite = false);

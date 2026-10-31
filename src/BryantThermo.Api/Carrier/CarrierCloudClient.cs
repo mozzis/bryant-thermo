@@ -55,7 +55,8 @@ public sealed class CarrierCloudClient(HttpClient http, IOptions<CarrierOptions>
               humidityHome { humid humidifier rhtg rclg rclgovercool }
               humidityAway { humid humidifier rhtg rclg rclgovercool }
               humidityVacation { humid humidifier rhtg rclg rclgovercool }
-              zones { id name enabled }
+              zones { id name enabled hold holdActivity otmr
+                program { id day { id zoneId period { id zoneId dayId activity time enabled } } } }
             }
           }
         }
@@ -70,6 +71,61 @@ public sealed class CarrierCloudClient(HttpClient http, IOptions<CarrierOptions>
         return data["infinitySystems"] as JsonArray
                ?? throw new CarrierApiException("Response did not contain infinitySystems.");
     }
+
+    private const string ZoneActivityMutation = """
+        mutation updateInfinityZoneActivity($input: InfinityZoneActivityInput!) {
+          updateInfinityZoneActivity(input: $input) { etag }
+        }
+        """;
+
+    private const string ZoneConfigMutation = """
+        mutation updateInfinityZoneConfig($input: InfinityZoneConfigInput!) {
+          updateInfinityZoneConfig(input: $input) { etag }
+        }
+        """;
+
+    /// <summary>Sets the heat/cool set points of the zone's "manual" activity.</summary>
+    public Task SetManualSetpointsAsync(string serial, string zoneId, double heat, double cool, string? fan, CancellationToken ct)
+    {
+        var input = new JsonObject
+        {
+            ["serial"] = serial,
+            ["zoneId"] = zoneId,
+            ["activityType"] = "manual",
+            ["htsp"] = heat.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture),
+            ["clsp"] = cool.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture),
+        };
+        if (!string.IsNullOrEmpty(fan)) input["fan"] = fan;
+        return AuthedQueryAsync("updateInfinityZoneActivity", ZoneActivityMutation, new JsonObject { ["input"] = input }, ct);
+    }
+
+    /// <summary>Holds the zone on its manual activity until <paramref name="until"/> ("HH:mm"), or indefinitely if null.</summary>
+    public Task HoldManualAsync(string serial, string zoneId, string? until, CancellationToken ct) =>
+        AuthedQueryAsync("updateInfinityZoneConfig", ZoneConfigMutation, new JsonObject
+        {
+            ["input"] = new JsonObject
+            {
+                ["serial"] = serial,
+                ["zoneId"] = zoneId,
+                ["hold"] = "on",
+                ["holdActivity"] = "manual",
+                ["otmr"] = until,
+            },
+        }, ct);
+
+    /// <summary>Clears any hold so the zone follows its program again.</summary>
+    public Task ResumeScheduleAsync(string serial, string zoneId, CancellationToken ct) =>
+        AuthedQueryAsync("updateInfinityZoneConfig", ZoneConfigMutation, new JsonObject
+        {
+            ["input"] = new JsonObject
+            {
+                ["serial"] = serial,
+                ["zoneId"] = zoneId,
+                ["hold"] = "off",
+                ["holdActivity"] = null,
+                ["otmr"] = null,
+            },
+        }, ct);
 
     private async Task<JsonNode> AuthedQueryAsync(string operation, string query, JsonObject variables, CancellationToken ct)
     {

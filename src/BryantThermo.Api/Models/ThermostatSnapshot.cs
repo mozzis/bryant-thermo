@@ -117,4 +117,7 @@ public sealed record ZoneStatus
     public string? Activity { get; init; }
 
     public bool Hold { get; init; }
+
+    /// <summary>When a hold ends ("HH:mm" thermostat-local time, normally the next schedule period). Null when none or indefinite.</summary>
+    public string? HoldUntil { get; init; }
 }

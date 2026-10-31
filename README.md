@@ -79,6 +79,9 @@ All responses are JSON. Temperatures are in the unit the thermostat is set to (`
 | GET | `/api/thermostat/zones` | All enabled zones |
 | GET | `/api/thermostat/zones/{id}` | One zone (404 if unknown) |
 | POST | `/api/thermostat/refresh` | Poll Carrier now (202), or 429 if polled in the last 15 s |
+| POST | `/api/thermostat/zones/{id}/adjust` | Body `{"delta": 1}` — shift heat and cool set points by `delta` degrees (negative to lower) until the next schedule period starts |
+| POST | `/api/thermostat/zones/{id}/setpoints` | Body `{"heat": 68, "cool": 76, "indefinite": false}` — hold explicit set points until the next period (or indefinitely) |
+| POST | `/api/thermostat/zones/{id}/resume` | Cancel the hold and return to the schedule immediately |
 | GET | `/api/health` | `ok` / `degraded`, data age, last error |
 
 Until the first successful poll, data endpoints return **503** with the reason
@@ -146,6 +149,7 @@ Example `GET /api/thermostat/humidity` (also included as `humidity` in `GET /api
 | Key | Default | Meaning |
 | --- | --- | --- |
 | `Carrier:PollIntervalSeconds` | 60 | Background poll interval (minimum 30) |
+| `Carrier:TimeZone` | machine local | Thermostat's time zone; used to find the next schedule period when holding |
 | `Carrier:StaleAfterSeconds` | 300 | Age after which `/api/health` reports `degraded` |
 | `Carrier:SystemSerial` | (first) | Which system on the account to report |
 | `Cors:AllowedOrigins` | localhost:3000, :5173 | Origins your front end is served from (`"*"` for any) |

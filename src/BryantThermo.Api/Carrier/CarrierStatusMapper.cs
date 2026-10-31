@@ -11,7 +11,11 @@ public static class CarrierStatusMapper
     /// <summary>
     /// Picks the requested system (or the first one when <paramref name="serial"/> is empty) and maps it.
     /// </summary>
-    public static ThermostatSnapshot MapSystem(JsonArray systems, string? serial, DateTimeOffset fetchedAt)
+    public static ThermostatSnapshot MapSystem(JsonArray systems, string? serial, DateTimeOffset fetchedAt) =>
+        Map(SelectSystem(systems, serial), fetchedAt);
+
+    /// <summary>Picks the requested system (or the first one when <paramref name="serial"/> is empty).</summary>
+    public static JsonNode SelectSystem(JsonArray systems, string? serial)
     {
         if (systems.Count == 0)
             throw new CarrierApiException("No thermostat systems are registered on this Carrier/Bryant account.");
@@ -27,7 +31,7 @@ public static class CarrierStatusMapper
             throw new CarrierApiException($"System '{serial}' not found on the account. Available: {available}");
         }
 
-        return Map(system, fetchedAt);
+        return system;
     }
 
     public static ThermostatSnapshot Map(JsonNode system, DateTimeOffset fetchedAt)
@@ -36,13 +40,13 @@ public static class CarrierStatusMapper
         var status = system["status"] ?? throw new CarrierApiException("System has no status block.");
 
         // Zone names live in config; live readings live in status.
-        var zoneNames = (system["config"]?["zones"] as JsonArray ?? [])
-            .Where(z => z is not null)
-            .ToDictionary(z => z!["id"]?.ToString() ?? "", z => z!["name"]?.ToString());
+        var configZones = (system["config"]?["zones"] as JsonArray ?? []).Where(z => z is not null).ToList();
+        var zoneNames = configZones.ToDictionary(z => z!["id"]?.ToString() ?? "", z => z!["name"]?.ToString());
+        var holdUntil = configZones.ToDictionary(z => z!["id"]?.ToString() ?? "", z => z!["otmr"]?.ToString());
 
         var zones = (status["zones"] as JsonArray ?? [])
             .Where(z => z is not null && IsEnabled(z["enabled"]))
-            .Select(z => MapZone(z!, zoneNames))
+            .Select(z => MapZone(z!, zoneNames, holdUntil))
             .ToList();
 
         return new ThermostatSnapshot
@@ -109,7 +113,8 @@ public static class CarrierStatusMapper
     public static int? StepsToPercent(JsonNode? node) =>
         CarrierJson.GetDouble(node) is { } v ? (int)Math.Round(v * 5) : null;
 
-    private static ZoneStatus MapZone(JsonNode z, IReadOnlyDictionary<string, string?> names)
+    private static ZoneStatus MapZone(JsonNode z, IReadOnlyDictionary<string, string?> names,
+        IReadOnlyDictionary<string, string?> holdUntil)
     {
         var id = z["id"]?.ToString() ?? "";
         var conditioning = z["zoneconditioning"]?.ToString();
@@ -129,6 +134,7 @@ public static class CarrierStatusMapper
             FanMode = z["fan"]?.ToString(),
             Activity = z["currentActivity"]?.ToString(),
             Hold = string.Equals(z["hold"]?.ToString(), "on", StringComparison.OrdinalIgnoreCase),
+            HoldUntil = holdUntil.GetValueOrDefault(id),
         };
     }
 
